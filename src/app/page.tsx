@@ -92,7 +92,7 @@ const parseCSV = (csvText: string) => {
 export default function Home() {
     // Data fetching
     const fetchStops = async (): Promise<Stop[]> => {
-        const res = await fetch("/data/stops.txt");
+        const res = await fetch("/data/stops.csv");
         const csvText = await res.text();
         const parsed = parseCSV(csvText);
         return parsed.filter(
@@ -101,24 +101,31 @@ export default function Home() {
     };
 
     const fetchRoutes = async (): Promise<Route[]> => {
-        const res = await fetch("/data/routes.txt");
+        const res = await fetch("/data/routes.csv");
         const csvText = await res.text();
         const parsed = parseCSV(csvText);
         return parsed as Route[];
     };
 
     const fetchStopTimes = async (): Promise<StopTime[]> => {
-        const res = await fetch("/data/stop_times.txt");
+        const res = await fetch("/data/stop_times.csv");
         const csvText = await res.text();
         const parsed = parseCSV(csvText);
         return parsed as StopTime[];
     };
 
     const fetchTrips = async (): Promise<Trip[]> => {
-        const res = await fetch("/data/trips.txt");
+        const res = await fetch("/data/trips.csv");
         const csvText = await res.text();
         const parsed = parseCSV(csvText);
         return parsed as Trip[];
+    };
+
+    const fetchStopsJson = async (): Promise<string[]> => {
+        const res = await fetch("/data/suggested_route.json");
+        const json = await res.json();
+        console.log("Fetched suggested stops:", json);
+        return json.stops();
     };
 
     // Queries
@@ -166,7 +173,6 @@ export default function Home() {
         stops[0] ? parseFloat(stops[0].stop_lat) : 45.4642,
         stops[0] ? parseFloat(stops[0].stop_lon) : 9.19,
     ];
-
     useEffect(() => {
         setMounted(true);
     }, []);
