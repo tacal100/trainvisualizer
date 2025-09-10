@@ -5,6 +5,10 @@ import ResultsBox from "@/components/ResultsBox";
 import RouteExplorer from "@/components/RouteExplorer";
 import StopPicker from "@/components/StopPicker";
 import {
+    fetchRouteForStops,
+    PlanningResult,
+} from "@/components/utility/QueryService";
+import {
     Box,
     Button,
     Card,
@@ -69,15 +73,6 @@ export type JourneySearch = {
     to: string;
     date: string;
     time: string;
-};
-
-export type PlanningResult = {
-    journeys: Array<{
-        duration: number;
-        segments: JourneySegment[];
-        transfers: number;
-    }>;
-    success?: boolean;
 };
 
 const parseCSV = (csvText: string) => {
@@ -212,53 +207,15 @@ export default function Home() {
                 (s) => s.stop_id === journeySearch.from
             );
             const toStop = stops.find((s) => s.stop_id === journeySearch.to);
-
-            // replace with pddl planner logic
-            setPlanningResult({
-                success: true,
-                journeys: [
-                    {
-                        duration: 45,
-                        transfers: 0,
-                        segments: [
-                            {
-                                route: "REG",
-                                routeColor: "#FF0000",
-                                from: fromStop?.stop_name || "Unknown",
-                                to: toStop?.stop_name || "Unknown",
-                                departure: "10:15",
-                                arrival: "11:00",
-                                stops: [journeySearch.from, journeySearch.to],
-                            },
-                        ],
-                    },
-                    {
-                        duration: 65,
-                        transfers: 1,
-                        segments: [
-                            {
-                                route: "BUS",
-                                routeColor: "#00AA00",
-                                from: fromStop?.stop_name || "Unknown",
-                                to: "Milano Centrale",
-                                departure: "10:00",
-                                arrival: "10:30",
-                                stops: [journeySearch.from, "central_station"],
-                            },
-                            {
-                                route: "REG",
-                                routeColor: "#FF0000",
-                                from: "Milano Centrale",
-                                to: toStop?.stop_name || "Unknown",
-                                departure: "10:45",
-                                arrival: "11:05",
-                                stops: ["central_station", journeySearch.to],
-                            },
-                        ],
-                    },
-                ],
+            const route = fetchRouteForStops(
+                journeySearch.from,
+                journeySearch.to
+            );
+            route.then((r) => {
+                console.log("Fetched route for journey:", r);
+                setPlanningResult(r);
+                setIsPlanning(false);
             });
-            setIsPlanning(false);
         }, 1);
     };
 
@@ -289,9 +246,7 @@ export default function Home() {
                             selectedRoute={selectedRoute}
                             selectedStops={selectedStops}
                             mapCenter={mapCenter}
-                            journeySegments={
-                                planningResult?.journeys[0]?.segments
-                            }
+                            journeySegments={undefined}
                         />
                     ) : (
                         <Box

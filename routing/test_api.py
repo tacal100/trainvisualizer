@@ -3,11 +3,12 @@ Test script for the Flask routing API.
 Run this while the Flask API server is running.
 """
 
-import requests
 import json
 
+import requests
+
 # Base URL for the API
-BASE_URL = "http://localhost:5000"
+BASE_URL = "http://localhost:8080"
 
 def test_health():
     """Test the health check endpoint."""
