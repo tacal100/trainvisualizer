@@ -206,14 +206,14 @@ def earliest_arrival_routing(
                 counter += 1
 
         # Allow transfers: for all trips departing from current stop after current time
-        current_route_id = trip_routes.get(trip_id, {}).get("route_id", "")
         for t_id, stop_seq in trips.items():
-            transfer_route_id = trip_routes.get(t_id, {}).get("route_id", "")
+            if t_id == trip_id:  # Skip same trip
+                continue
             for i, row in enumerate(stop_seq):
                 if row["stop_id"] == stop_id:
                     dep_secs = parse_time_to_seconds(row.get("departure_time", ""))
                     if dep_secs is not None and dep_secs > arr_secs:
-                        is_transfer = (current_route_id != transfer_route_id and current_route_id != "" and transfer_route_id != "" and t_id != trip_id)
+                        transfer_route_id = trip_routes.get(t_id, {}).get("route_id", "")
                         transfer_stop_info = {
                             "stop_id": stop_id,
                             "stop_name": stops[stop_id].name if stop_id in stops else stop_id,
@@ -221,10 +221,8 @@ def earliest_arrival_routing(
                             "route_id": transfer_route_id,
                             "arrival_time": row.get("arrival_time"),
                             "departure_time": row.get("departure_time"),
-                            "is_transfer": is_transfer,
-                            "transfer_info": f"Transfer from route {current_route_id} to route {transfer_route_id}" if is_transfer else ""
+                            "is_transfer": True,
                         }
-                        # Always add transfer opportunities, but mark them correctly
                         heapq.heappush(pq, (dep_secs, counter, stop_id, t_id, i, path))
                         counter += 1
 
@@ -234,7 +232,6 @@ def earliest_arrival_routing(
     # Process the path to add route information and detect transfers
     processed_stops = []
     transfers = []
-    current_route = None
     last_trip_id = None
     
     for i, stop_info in enumerate(best_path):
@@ -242,24 +239,24 @@ def earliest_arrival_routing(
         route_info = routes.get(route_id, {})
         trip_id = stop_info.get("trip_id", "")
         
-        # Detect transfer: when trip_id changes OR route_id changes
+        # Detect transfer: when trip_id changes
         is_transfer = False
         transfer_note = ""
         
         if i > 0 and last_trip_id is not None and trip_id != last_trip_id:
-            last_route = trip_routes.get(last_trip_id, {}).get("route_id", "")
+            is_transfer = True
+            last_route_id = trip_routes.get(last_trip_id, {}).get("route_id", "")
             current_route_id = trip_routes.get(trip_id, {}).get("route_id", "")
-            
-            if last_route != current_route_id and last_route != "" and current_route_id != "":
-                is_transfer = True
-                transfer_note = f"Transfer from route {last_route} to route {current_route_id}"
-                transfers.append({
-                    "at_stop": stop_info["stop_name"],
-                    "stop_id": stop_info["stop_id"],
-                    "transfer_info": transfer_note,
-                    "from_route": last_route,
-                    "to_route": current_route_id
-                })
+            transfer_note = f"Transfer from trip {last_trip_id} (route {last_route_id}) to trip {trip_id} (route {current_route_id})"
+            transfers.append({
+                "at_stop": stop_info["stop_name"],
+                "stop_id": stop_info["stop_id"],
+                "transfer_info": transfer_note,
+                "from_trip": last_trip_id,
+                "to_trip": trip_id,
+                "from_route": last_route_id,
+                "to_route": current_route_id
+            })
         
         enhanced_stop = {
             "stop_id": stop_info["stop_id"],
@@ -292,7 +289,6 @@ def earliest_arrival_routing(
         "transfers": transfers,
         "detailed_route": processed_stops
     }
-
 def compute_route(origin_query: str, destination_query: str, start_time: str, data_dir: Path = DATA_DIR_DEFAULT):
     stops_path = data_dir / "stops.csv"
     stop_times_path = data_dir / "stop_times.csv"
