@@ -4,14 +4,15 @@ Flask API for train routing service.
 Provides REST endpoints to get routes between stations.
 """
 
-from flask import Flask, request, jsonify
-from flask_cors import CORS
 import sys
 from pathlib import Path
 
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+
 # Add the routing module to the path
 sys.path.append(str(Path(__file__).parent))
-from routing import getRoute, load_stops, DATA_DIR_DEFAULT
+from routing import DATA_DIR_DEFAULT, getRoute, load_stops
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for frontend access
@@ -168,4 +169,4 @@ if __name__ == '__main__':
     print("  GET  /api/stations")
     print("  GET  /api/health")
     print("")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=8080)
