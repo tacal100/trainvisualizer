@@ -54,8 +54,8 @@ export default function Home() {
     const [journeySearch, setJourneySearch] = useState<JourneySearch>({
         from: "",
         to: "",
-        date: "",
-        time: "",
+        date: new Date().toISOString().split("T")[0],
+        time: "08:00:00",
     });
     const [planningResult, setPlanningResult] = useState<PlanningResult | null>(
         null
@@ -80,13 +80,11 @@ export default function Home() {
         setPlanningResult(null);
 
         setTimeout(() => {
-            const fromStop = stops.find(
-                (s) => s.stop_id === journeySearch.from
-            );
-            const toStop = stops.find((s) => s.stop_id === journeySearch.to);
+            console.log(journeySearch);
             const route = fetchRouteForStops(
                 journeySearch.from,
-                journeySearch.to
+                journeySearch.to,
+                journeySearch.time
             );
             route.then((r) => {
                 console.log("Fetched route for journey:", r);
@@ -123,7 +121,6 @@ export default function Home() {
                         <MapView
                             stops={stops}
                             selectedRoute={selectedRoute}
-                            selectedStops={selectedStops}
                             mapCenter={mapCenter}
                             planningResult={planningResult}
                         />

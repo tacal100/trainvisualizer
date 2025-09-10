@@ -36,7 +36,6 @@ def get_route_api():
         origin = request.args.get('from')
         destination = request.args.get('to')
         start_time = request.args.get('time', '08:00:00')
-        
         # Validate required parameters
         if not origin:
             return jsonify({"error": "Missing 'from' parameter", "success": False}), 400

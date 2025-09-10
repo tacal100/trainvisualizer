@@ -58,7 +58,7 @@ export default function DateTimePicker({
                     <Text fontSize="sm">Time</Text>
                 </HStack>
                 <Input
-                    type="time"
+                    type="datetime"
                     value={journeySearch.time}
                     onChange={(e) =>
                         setJourneySearch({

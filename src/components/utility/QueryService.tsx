@@ -62,10 +62,14 @@ export type PlanningResult = {
  * @param to The destination stop ID.
  * @returns A promise that resolves to the route information.
  */
-export function fetchRouteForStops(from: string, to: string) {
+export function fetchRouteForStops(
+    from: string,
+    to: string,
+    time: string
+): Promise<PlanningResult> {
     const url = `http://localhost:8080/api/route?from=${encodeURIComponent(
         from
-    )}&to=${encodeURIComponent(to)}`;
+    )}&to=${encodeURIComponent(to)}&time=${encodeURIComponent(time)}`;
     return fetch(url).then((res) => {
         if (!res.ok) {
             throw new Error("Network response was not ok");
