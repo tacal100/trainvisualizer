@@ -1,4 +1,3 @@
-import { Route } from "@/app/page";
 import {
     Badge,
     Box,
@@ -12,6 +11,7 @@ import {
 } from "@chakra-ui/react";
 import { Dispatch, SetStateAction } from "react";
 import { FaTrain } from "react-icons/fa";
+import { Route } from "./utility/QueryService";
 
 type RouteExplorerProps = {
     routes: Route[];
@@ -46,9 +46,19 @@ export default function RouteExplorer({
             </Card.Header>
             <Card.Body>
                 <Select.Root
-                    collection={routeCollection}
+                    collection={routeCollection.append({
+                        label: "- None -",
+                        value: "",
+                        route: {
+                            route_id: "",
+                            route_short_name: "",
+                            route_long_name: "",
+                            route_color: "",
+                        },
+                    })}
                     value={[selectedRoute?.route_id || ""]}
                     onValueChange={(e) => {
+                        console.log(e);
                         const route = routes.find(
                             (r) => r.route_id === e.value[0]
                         );
@@ -76,6 +86,24 @@ export default function RouteExplorer({
                                         </HStack>
                                     </Select.Item>
                                 ))}
+                                <Select.Item
+                                    key={"none"}
+                                    item={{
+                                        label: "- None -",
+                                        value: "",
+                                        route: {
+                                            route_id: "",
+                                            route_short_name: "",
+                                            route_long_name: "",
+                                            route_color: "",
+                                        },
+                                    }}
+                                >
+                                    <HStack>
+                                        <Box w={3} h={3} borderRadius="full" />
+                                        <Text>- None -</Text>
+                                    </HStack>
+                                </Select.Item>
                             </Select.Content>
                         </Select.Positioner>
                     </Portal>

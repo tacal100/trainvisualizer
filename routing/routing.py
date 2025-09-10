@@ -12,11 +12,14 @@ Usage: set origin, destination, and start_time variables below, then run the scr
 """
 
 from __future__ import annotations
-import csv, json, math
+
+import csv
+import json
+import math
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Optional, Tuple
 
 DATA_DIR_DEFAULT = Path("public/data")
 
@@ -238,6 +241,12 @@ def earliest_arrival_routing(
         route_id = stop_info.get("route_id", "")
         route_info = routes.get(route_id, {})
         trip_id = stop_info.get("trip_id", "")
+        stop_id = stop_info["stop_id"]
+        
+        # Get stop coordinates
+        stop_obj = stops.get(stop_id)
+        stop_lat = stop_obj.lat if stop_obj else 0.0
+        stop_lon = stop_obj.lon if stop_obj else 0.0
         
         # Detect transfer: when trip_id changes
         is_transfer = False
@@ -251,6 +260,8 @@ def earliest_arrival_routing(
             transfers.append({
                 "at_stop": stop_info["stop_name"],
                 "stop_id": stop_info["stop_id"],
+                "stop_lat": stop_lat,
+                "stop_lon": stop_lon,
                 "transfer_info": transfer_note,
                 "from_trip": last_trip_id,
                 "to_trip": trip_id,
@@ -261,6 +272,8 @@ def earliest_arrival_routing(
         enhanced_stop = {
             "stop_id": stop_info["stop_id"],
             "stop_name": stop_info["stop_name"],
+            "stop_lat": stop_lat,
+            "stop_lon": stop_lon,
             "arrival_time": stop_info["arrival_time"],
             "departure_time": stop_info["departure_time"],
             "trip_id": stop_info["trip_id"],

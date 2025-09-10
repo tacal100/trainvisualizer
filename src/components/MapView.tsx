@@ -12,37 +12,13 @@ import {
 import iconUrl from "leaflet/dist/images/marker-icon.png";
 // @ts-ignore
 import iconShadowUrl from "leaflet/dist/images/marker-shadow.png";
-
-type Stop = {
-    stop_id: string;
-    stop_name: string;
-    stop_lat: string;
-    stop_lon: string;
-};
-
-type Route = {
-    route_id: string;
-    route_short_name: string;
-    route_long_name: string;
-    route_color: string;
-};
-
-type JourneySegment = {
-    route: string;
-    routeColor: string;
-    from: string;
-    to: string;
-    departure: string;
-    arrival: string;
-    stops: string[];
-};
+import { PlanningResult, Route, Stop } from "./utility/QueryService";
 
 interface MapViewProps {
     stops: Stop[];
     selectedRoute: Route | null;
-    selectedStops: string[];
     mapCenter: [number, number];
-    journeySegments?: JourneySegment[];
+    planningResult: PlanningResult | null;
 }
 
 // Fix Leaflet default icon
@@ -57,31 +33,20 @@ let DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
-function MapBounds({
-    stops,
-    selectedStops,
-}: {
-    stops: Stop[];
-    selectedStops: string[];
-}) {
+function MapBounds({ selectedStops }: { selectedStops: Stop[] | undefined }) {
     const map = useMap();
 
     useEffect(() => {
-        if (selectedStops.length > 0) {
-            const selectedStopObjects = stops.filter((s) =>
-                selectedStops.includes(s.stop_id)
+        if (selectedStops && selectedStops.length > 0) {
+            const bounds = L.latLngBounds(
+                selectedStops.map((s) => [
+                    parseFloat(s.stop_lat),
+                    parseFloat(s.stop_lon),
+                ])
             );
-            if (selectedStopObjects.length > 0) {
-                const bounds = L.latLngBounds(
-                    selectedStopObjects.map((s) => [
-                        parseFloat(s.stop_lat),
-                        parseFloat(s.stop_lon),
-                    ])
-                );
-                map.fitBounds(bounds, { padding: [50, 50] });
-            }
+            map.fitBounds(bounds, { padding: [50, 50] });
         }
-    }, [selectedStops, stops, map]);
+    }, [selectedStops, map]);
 
     return null;
 }
@@ -92,54 +57,72 @@ function MapBounds({
 export default function MapView({
     stops,
     selectedRoute,
-    selectedStops,
     mapCenter,
-    journeySegments,
+    planningResult,
 }: MapViewProps) {
     // Get route polyline positions
-    const getRoutePositions = (): [number, number][] => {
-        if (!selectedStops || selectedStops.length < 2) return [];
+    /*   const getRoutePositions = (): [number, number][] => {
+        //TODO: we need a backend function that returns all stops in a route
+     }; */
 
-        return selectedStops
-            .map((stopId) => {
-                const stop = stops.find((s) => s.stop_id === stopId);
-                if (!stop) return null;
-                return [
-                    parseFloat(stop.stop_lat),
-                    parseFloat(stop.stop_lon),
-                ] as [number, number];
-            })
-            .filter((pos): pos is [number, number] => pos !== null);
-    };
+    const getJourneyPolylinesWithRouteColors = () => {
+        if (!planningResult || planningResult.detailed_route.length < 2)
+            return [];
 
-    // Get journey polyline for planned routes
-    const getJourneyPolylines = () => {
-        if (!journeySegments) return [];
+        const polylines = [];
+        let currentSegment = [planningResult.detailed_route[0]];
 
-        return journeySegments.map((segment, idx) => {
-            const positions = segment.stops
-                .map((stopId) => {
-                    const stop = stops.find(
-                        (s) => s.stop_id === stopId || s.stop_name === stopId
+        planningResult.detailed_route.map((stop, i) => {
+            // collect stops until a transfer is found
+            if (!stop.is_transfer) {
+                currentSegment.push(stop);
+            } else {
+                if (currentSegment.length >= 2) {
+                    const positions = currentSegment.map(
+                        (s) =>
+                            [
+                                parseFloat(s.stop_lat),
+                                parseFloat(s.stop_lon),
+                            ] as [number, number]
                     );
-                    if (!stop) return null;
-                    return [
-                        parseFloat(stop.stop_lat),
-                        parseFloat(stop.stop_lon),
-                    ] as [number, number];
-                })
-                .filter((pos): pos is [number, number] => pos !== null);
+                    // push all collected stops until transfer as a polyline
+                    polylines.push({
+                        positions,
+                        color: `hsl(${(i * 60) % 360}, 70%, 50%)`,
+                        key: `journey-segment-${i}`,
+                    });
+                }
 
-            return {
-                positions,
-                color: segment.routeColor,
-                key: `journey-${idx}`,
-            };
+                // start new segment
+                currentSegment = [
+                    currentSegment[currentSegment.length - 1],
+                    stop,
+                ];
+            }
         });
+
+        // add final segment
+        if (currentSegment.length >= 2) {
+            const positions = currentSegment.map(
+                (s) =>
+                    [parseFloat(s.stop_lat), parseFloat(s.stop_lon)] as [
+                        number,
+                        number
+                    ]
+            );
+
+            polylines.push({
+                positions,
+                color: "#FF6B6B",
+                key: `journey-segment-final`,
+            });
+        }
+
+        return polylines;
     };
 
-    const routePositions = getRoutePositions();
-    const journeyPolylines = getJourneyPolylines();
+    // const routePositions = getRoutePositions();
+    const journeyPolylines = getJourneyPolylinesWithRouteColors();
 
     return (
         <MapContainer
@@ -152,20 +135,21 @@ export default function MapView({
                 attribution="&copy; OpenStreetMap contributors"
             />
 
-            <MapBounds stops={stops} selectedStops={selectedStops} />
+            <MapBounds selectedStops={planningResult?.detailed_route} />
 
             {/* Route visualization */}
-            {selectedRoute && routePositions.length > 1 && (
+            {/*  {selectedRoute && routePositions.length > 1 && (
                 <Polyline
                     positions={routePositions}
                     pathOptions={{
-                        color: selectedRoute.route_color || "#0066CC",
+                        color: "#0066CC",
                         weight: 5,
                         opacity: 0.7,
                     }}
                 />
-            )}
+            )} */}
 
+            {/* Journey visualization */}
             {journeyPolylines.map((polyline) => (
                 <Polyline
                     key={polyline.key}
@@ -181,11 +165,13 @@ export default function MapView({
 
             {/* All stops */}
             {stops.map((stop) => {
-                const isSelected = selectedStops.includes(stop.stop_id);
-                const isInJourney = journeySegments?.some(
-                    (seg) =>
-                        seg.stops.includes(stop.stop_id) ||
-                        seg.stops.includes(stop.stop_name)
+                const isSelected = planningResult?.detailed_route.some(
+                    (s) => s.stop_id === stop.stop_id
+                );
+                const isInJourney = planningResult?.detailed_route.some(
+                    (stopInJourney) =>
+                        stop.stop_id === stopInJourney.stop_id ||
+                        stop.stop_name === stopInJourney.stop_name
                 );
 
                 if (isSelected || isInJourney) {
@@ -198,9 +184,7 @@ export default function MapView({
                             ]}
                             radius={isInJourney ? 10 : 8}
                             pathOptions={{
-                                fillColor: isInJourney
-                                    ? "#FF6B6B"
-                                    : selectedRoute?.route_color || "#0066CC",
+                                fillColor: isInJourney ? "#FF6B6B" : "#0066CC",
                                 fillOpacity: 0.8,
                                 color: "white",
                                 weight: 3,
@@ -224,11 +208,11 @@ export default function MapView({
                                             <span
                                                 style={{
                                                     fontSize: "12px",
-                                                    color: selectedRoute.route_color,
+                                                    color: "#0066CC",
                                                     fontWeight: "bold",
                                                 }}
                                             >
-                                                {selectedRoute.route_short_name}
+                                                {selectedRoute.route_long_name}
                                             </span>
                                         </>
                                     )}
