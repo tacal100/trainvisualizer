@@ -1,13 +1,13 @@
 import { JourneySearch } from "@/app/page";
 import { Button, Card, Icon, Separator, VStack } from "@chakra-ui/react";
 import { LuNavigation } from "react-icons/lu";
-import DateTimePicker from "./DateTimePicker";
-import ResultsBox from "./ResultsBox";
+import DateTimePicker from "../DateTimePicker";
+import { PlanningResult, Stop } from "../utility/QueryService";
+import JourneyResults from "./JourneyResults";
 import StopPicker from "./StopPicker";
-import { PlanningResult } from "./utility/QueryService";
 
 type JourneyPlannerProps = {
-    stops: { stop_id: string; stop_name: string }[];
+    stops: Stop[];
     journeySearch: JourneySearch;
     setJourneySearch: React.Dispatch<React.SetStateAction<JourneySearch>>;
     handleJourneyPlan: () => void;
@@ -23,7 +23,6 @@ export function JourneyPlanner({
     isPlanning,
     planningResult,
 }: JourneyPlannerProps) {
-
     return (
         <Card.Root flex={1} display="flex" flexDir="column" minH={0}>
             <Card.Header>
@@ -58,6 +57,7 @@ export function JourneyPlanner({
                         w="full"
                         onClick={handleJourneyPlan}
                         disabled={
+                            journeySearch.from === journeySearch.to ||
                             !journeySearch.from ||
                             !journeySearch.to ||
                             isPlanning
@@ -68,9 +68,8 @@ export function JourneyPlanner({
                     </Button>
                 </VStack>
                 <Separator marginBlock={4} />
-                {/* Results */}
                 {planningResult && (
-                    <ResultsBox planningResult={planningResult} />
+                    <JourneyResults planningResult={planningResult} />
                 )}
             </Card.Body>
         </Card.Root>

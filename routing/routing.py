@@ -13,118 +13,30 @@ Usage: set origin, destination, and start_time variables below, then run the scr
 
 from __future__ import annotations
 
-import csv
 import json
 import math
-from collections import defaultdict
-from dataclasses import dataclass
+from datetime import datetime, time
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
+
+from loading import (Stop, load_routes_info, load_stop_times_by_trip,
+                     load_stops, load_trips_info)
 
 DATA_DIR_DEFAULT = Path("public/data")
 
 def parse_time_to_seconds(t: str) -> Optional[int]:
-    """Parse GTFS HH:MM:SS time (may exceed 24h) to seconds; return None if invalid."""
+    """Parse GTFS HH:MM:SS time to seconds using built-in datetime; return None if invalid."""
     if not t or t.lower() == "nan":
         return None
     try:
-        parts = t.strip().split(":")
-        if len(parts) != 3:
-            return None
-        h, m, s = map(int, parts)
-        return h * 3600 + m * 60 + s
-    except Exception:
+        dt = datetime.strptime(t.strip(), "%H:%M:%S")
+        return dt.hour * 3600 + dt.minute * 60 + dt.second
+    except ValueError:
         return None
 
 def seconds_to_time(seconds: int) -> str:
-    """Convert seconds to HH:MM:SS format."""
-    h = seconds // 3600
-    m = (seconds % 3600) // 60
-    s = seconds % 60
-    return f"{h:02d}:{m:02d}:{s:02d}"
-
-@dataclass
-class Stop:
-    stop_id: str
-    name: str
-    lat: float
-    lon: float
-
-def load_stops(stops_path: Path) -> Dict[str, Stop]:
-    stops: Dict[str, Stop] = {}
-    with stops_path.open(encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            if not row.get("stop_id"):
-                continue
-            try:
-                stops[row["stop_id"]] = Stop(
-                    stop_id=row["stop_id"],
-                    name=row.get("stop_name", ""),
-                    lat=float(row.get("stop_lat") or 0.0),
-                    lon=float(row.get("stop_lon") or 0.0),
-                )
-            except ValueError:
-                continue
-    return stops
-
-def load_stop_times_by_trip(stop_times_path: Path) -> Dict[str, List[dict]]:
-    """Return dict: trip_id -> ordered list of stop_times rows."""
-    trips = defaultdict(list)
-    with stop_times_path.open(encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            trips[row["trip_id"]].append(row)
-    # Sort each trip by stop_sequence
-    for trip_id in trips:
-        trips[trip_id].sort(key=lambda r: int(r.get("stop_sequence", 0)))
-    return trips
-
-def load_routes_info(routes_path: Path) -> Dict[str, dict]:
-    """Load route information for transfer detection."""
-    routes = {}
-    try:
-        with routes_path.open(encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                routes[row.get("route_id", "")] = {
-                    "route_short_name": row.get("route_short_name", ""),
-                    "route_long_name": row.get("route_long_name", ""),
-                    "route_type": row.get("route_type", "")
-                }
-    except FileNotFoundError:
-        pass
-    return routes
-
-def load_trips_info(trips_path: Path) -> Dict[str, dict]:
-    """Load trip to route mapping."""
-    trip_routes = {}
-    try:
-        with trips_path.open(encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                trip_routes[row.get("trip_id", "")] = {
-                    "route_id": row.get("route_id", ""),
-                    "trip_headsign": row.get("trip_headsign", "")
-                }
-    except FileNotFoundError:
-        pass
-    return trip_routes
-
-def fuzzy_find_stop_id(stops: Dict[str, Stop], query: str) -> Optional[str]:
-    q = query.strip().lower()
-    if q in stops:  # direct id match
-        return q
-    for sid, st in stops.items():
-        if st.name.lower() == q:
-            return sid
-    candidates = [sid for sid, st in stops.items() if q in st.name.lower()]
-    if candidates:
-        candidates.sort()
-        return candidates[0]
-    if query.isdigit() and query in stops:
-        return query
-    return None
+    """Convert seconds to HH:MM:SS format using built-in time formatting."""
+    return str(time(seconds // 3600, (seconds % 3600) // 60, seconds % 60))
 
 def earliest_arrival_routing(
     stops: Dict[str, Stop],
@@ -302,7 +214,7 @@ def earliest_arrival_routing(
         "transfers": transfers,
         "detailed_route": processed_stops
     }
-def compute_route(origin_query: str, destination_query: str, start_time: str, data_dir: Path = DATA_DIR_DEFAULT):
+def compute_route(origin_id: str, dest_id: str, start_time: str, data_dir: Path = DATA_DIR_DEFAULT):
     stops_path = data_dir / "stops.csv"
     stop_times_path = data_dir / "stop_times.csv"
     routes_path = data_dir / "routes.csv"
@@ -316,13 +228,10 @@ def compute_route(origin_query: str, destination_query: str, start_time: str, da
     routes = load_routes_info(routes_path)
     trip_routes = load_trips_info(trips_path)
     
-    origin_id = fuzzy_find_stop_id(stops, origin_query)
-    dest_id = fuzzy_find_stop_id(stops, destination_query)
-    
     if origin_id is None:
-        raise ValueError(f"Origin stop not found: {origin_query}")
+        raise ValueError(f"Origin stop not found: {origin_id}")
     if dest_id is None:
-        raise ValueError(f"Destination stop not found: {destination_query}")
+        raise ValueError(f"Destination stop not found: {dest_id}")
     if origin_id == dest_id:
         return {
             "origin": origin_id,
@@ -338,7 +247,6 @@ def compute_route(origin_query: str, destination_query: str, start_time: str, da
             }],
             "note": "Origin equals destination",
         }
-    
     return earliest_arrival_routing(stops, trips, routes, trip_routes, origin_id, dest_id, start_time)
 
 def getRoute(station1: str, station2: str, start_time: str = "08:00:00", data_dir: Path = DATA_DIR_DEFAULT) -> dict:

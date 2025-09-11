@@ -1,7 +1,6 @@
 "use client";
 
-import { JourneyPlanner } from "@/components/JourneyPlanner";
-import RouteExplorer from "@/components/RouteExplorer";
+import { JourneyPlanner } from "@/components/journey-planner/JourneyPlanner";
 import {
     fetchRouteForStops,
     fetchRoutes,
@@ -80,7 +79,6 @@ export default function Home() {
         setPlanningResult(null);
 
         setTimeout(() => {
-            console.log(journeySearch);
             const route = fetchRouteForStops(
                 journeySearch.from,
                 journeySearch.to,
@@ -98,8 +96,6 @@ export default function Home() {
     };
 
     const isLoading = stopsLoading || routesLoading || stopTimesLoading;
-
-    console.log(routes);
 
     return (
         <HStack
@@ -139,12 +135,12 @@ export default function Home() {
 
             <VStack w={"35%"} gap={4} alignItems="stretch" className="flex">
                 {/* Route Explorer */}
-                <RouteExplorer
+                {/*  <RouteExplorer
                     routes={routes}
                     selectedStops={selectedStops}
                     setSelectedRoute={setSelectedRoute}
                     selectedRoute={selectedRoute}
-                />
+                /> */}
 
                 {/* Journey Planner */}
                 <JourneyPlanner

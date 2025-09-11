@@ -58,7 +58,7 @@ export default function RouteExplorer({
                     })}
                     value={[selectedRoute?.route_id || ""]}
                     onValueChange={(e) => {
-                        console.log(e);
+                
                         const route = routes.find(
                             (r) => r.route_id === e.value[0]
                         );

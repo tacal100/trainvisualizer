@@ -1,5 +1,5 @@
 import L from "leaflet";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
     CircleMarker,
     MapContainer,
@@ -8,11 +8,8 @@ import {
     TileLayer,
     useMap,
 } from "react-leaflet";
-// @ts-ignore
-import iconUrl from "leaflet/dist/images/marker-icon.png";
-// @ts-ignore
-import iconShadowUrl from "leaflet/dist/images/marker-shadow.png";
 import { PlanningResult, Route, Stop } from "./utility/QueryService";
+// Import your train icon properly
 
 interface MapViewProps {
     stops: Stop[];
@@ -21,20 +18,27 @@ interface MapViewProps {
     planningResult: PlanningResult | null;
 }
 
-// Fix Leaflet default icon
+// Fix Leaflet default icon - remove shadow and use your train icon
 let DefaultIcon = L.icon({
-    iconUrl: iconUrl.src,
-    shadowUrl: iconShadowUrl.src,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41],
+    iconUrl: "/BSicon_TRAIN2.png", // Handle both Next.js import formats
+    iconSize: [25, 25], // Make it square for the train
+    iconAnchor: [12, 12], // Center the anchor
+    popupAnchor: [0, -12], // Popup appears above the icon
+    // Remove shadowUrl and shadowSize completely
 });
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
-function MapBounds({ selectedStops }: { selectedStops: Stop[] | undefined }) {
+// Animated marker for journey polylines
+function JourneyAnimatedMarker({
+    selectedStops,
+    polylines,
+}: {
+    selectedStops: Stop[] | undefined;
+    polylines: any[];
+}) {
     const map = useMap();
+    const [motionLoaded, setMotionLoaded] = useState(false);
 
     useEffect(() => {
         if (selectedStops && selectedStops.length > 0) {
@@ -46,7 +50,67 @@ function MapBounds({ selectedStops }: { selectedStops: Stop[] | undefined }) {
             );
             map.fitBounds(bounds, { padding: [50, 50] });
         }
-    }, [selectedStops, map]);
+
+        if ((L as any).motion) {
+            setMotionLoaded(true);
+            return;
+        }
+
+        // Load the leaflet.motion library
+
+        const script = document.createElement("script");
+        script.src =
+            "https://cdn.jsdelivr.net/npm/leaflet.motion@0.3.2/dist/leaflet.motion.min.js";
+        script.onload = () => setTimeout(() => setMotionLoaded(true), 100);
+        document.head.appendChild(script);
+    }, []);
+
+    useEffect(() => {
+        if (!map || !motionLoaded || polylines.length === 0) return;
+
+        // Create animated sequence using L.motion.seq for different durations per segment
+        const motionLayers: any[] = [];
+
+        polylines.forEach((polyline, index) => {
+            const segmentDuration = (polyline.duration / 60) * 1000; // Duration in milliseconds because otherwise it takes too long
+
+            const motionLine = (L as any).motion.polyline(
+                polyline.positions,
+                { color: "transparent" },
+                {
+                    auto: false,
+                    duration: segmentDuration,
+                    easing: (L as any).Motion.Ease.linear,
+                },
+                {
+                    showMarker: true,
+                    icon: L.divIcon({
+                        html: `<div style="background-color: ${polyline.color}; width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center;">
+                                 <img src="/BSicon_TRAIN2.png" style="width: 16px; height: 16px; filter: brightness(0) invert(1);" />
+                               </div>`,
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 12],
+                        className: "train-marker",
+                    }),
+                }
+            );
+
+            motionLayers.push(motionLine);
+        });
+
+        // Create sequence group to animate segments one after another
+        const seqGroup = (L as any).motion.seq(motionLayers, {
+            auto: false,
+        });
+
+        seqGroup.addTo(map);
+        setTimeout(() => seqGroup.motionStart(), 1000);
+
+        return () => {
+            seqGroup.motionStop();
+            map.removeLayer(seqGroup);
+        };
+    }, [map, motionLoaded, polylines]);
 
     return null;
 }
@@ -60,10 +124,7 @@ export default function MapView({
     mapCenter,
     planningResult,
 }: MapViewProps) {
-    // Get route polyline positions
-    /*   const getRoutePositions = (): [number, number][] => {
-        //TODO: we need a backend function that returns all stops in a route
-     }; */
+    const selectedStops = planningResult?.detailed_route;
 
     const getJourneyPolylinesWithRouteColors = () => {
         if (!planningResult || planningResult.detailed_route.length < 2)
@@ -71,6 +132,8 @@ export default function MapView({
 
         const polylines = [];
         let currentSegment = [planningResult.detailed_route[0]];
+
+        // Helper function to convert time string to seconds
 
         planningResult.detailed_route.map((stop, i) => {
             // collect stops until a transfer is found
@@ -85,11 +148,21 @@ export default function MapView({
                                 parseFloat(s.stop_lon),
                             ] as [number, number]
                     );
+
+                    const firstStop = currentSegment[1];
+                    const lastStop = currentSegment[currentSegment.length - 1];
+                    const startTime = timeToSeconds(firstStop.departure_time);
+                    const endTime = timeToSeconds(lastStop.arrival_time);
+                    const durationInSeconds = endTime - startTime;
+
                     // push all collected stops until transfer as a polyline
                     polylines.push({
                         positions,
-                        color: `hsl(${(i * 60) % 360}, 70%, 50%)`,
-                        key: `journey-segment-${i}`,
+                        color: `hsl(${
+                            (polylines.length * 60) % 360
+                        }, 50%, 50%)`,
+                        key: `journey-segment-${polylines.length}`,
+                        duration: durationInSeconds,
                     });
                 }
 
@@ -111,17 +184,24 @@ export default function MapView({
                     ]
             );
 
+            // Calculate duration for final segment
+            const firstStop = currentSegment[1];
+            const lastStop = currentSegment[currentSegment.length - 1];
+            const startTime = timeToSeconds(firstStop.departure_time);
+            const endTime = timeToSeconds(lastStop.arrival_time);
+            const durationInSeconds = endTime - startTime; // Already in seconds
+
             polylines.push({
                 positions,
-                color: "#FF6B6B",
-                key: `journey-segment-final`,
+                color: `hsl(${(polylines.length * 60) % 360}, 70%, 50%)`,
+                key: `journey-segment-${polylines.length}`,
+                duration: durationInSeconds,
             });
         }
 
         return polylines;
     };
 
-    // const routePositions = getRoutePositions();
     const journeyPolylines = getJourneyPolylinesWithRouteColors();
 
     return (
@@ -135,20 +215,6 @@ export default function MapView({
                 attribution="&copy; OpenStreetMap contributors"
             />
 
-            <MapBounds selectedStops={planningResult?.detailed_route} />
-
-            {/* Route visualization */}
-            {/*  {selectedRoute && routePositions.length > 1 && (
-                <Polyline
-                    positions={routePositions}
-                    pathOptions={{
-                        color: "#0066CC",
-                        weight: 5,
-                        opacity: 0.7,
-                    }}
-                />
-            )} */}
-
             {/* Journey visualization */}
             {journeyPolylines.map((polyline) => (
                 <Polyline
@@ -158,10 +224,17 @@ export default function MapView({
                         color: polyline.color,
                         weight: 6,
                         opacity: 0.8,
-                        dashArray: "10, 10",
                     }}
                 />
             ))}
+
+            {/* Animated marker along journey */}
+            {journeyPolylines.length > 0 && (
+                <JourneyAnimatedMarker
+                    selectedStops={selectedStops}
+                    polylines={journeyPolylines}
+                />
+            )}
 
             {/* All stops */}
             {stops.map((stop) => {
@@ -256,4 +329,9 @@ export default function MapView({
             })}
         </MapContainer>
     );
+}
+
+function timeToSeconds(timeStr: string): number {
+    const [hours, minutes, seconds] = timeStr.split(":").map(Number);
+    return hours * 3600 + minutes * 60 + seconds;
 }

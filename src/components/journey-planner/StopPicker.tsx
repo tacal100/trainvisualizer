@@ -1,6 +1,7 @@
-import { JourneySearch, Stop } from "@/app/page";
+import { JourneySearch } from "@/app/page";
 import { createListCollection, Portal, Select } from "@chakra-ui/react";
 import { Dispatch, SetStateAction } from "react";
+import { Stop } from "../utility/QueryService";
 
 type StopPickerProps = {
     stops: Stop[];
