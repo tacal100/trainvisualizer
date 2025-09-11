@@ -18,24 +18,34 @@ export default function JourneyResults({
         }
         return segmentIndex;
     });
-
+    const travelMins = planningResult.total_travel_minutes;
+    console.log(travelMins);
     return (
         <Box className="flex flex-col" minH={0} gap={4}>
             <div className="flex flex-row w-full justify-between items-center !border-b !pb-4">
-                <Text fontWeight="semibold">Recommended Journey</Text>
-                <div className="flex flex-row gap-2">
-                    <Badge background="green.500" size="md">
-                        <Text fontWeight="semibold">
-                            {planningResult.stop_count} Stop
-                            {planningResult.stop_count !== 1 ? "s" : ""}
-                        </Text>
-                    </Badge>
-                    <Badge background="red.500" size="md">
-                        <Text fontWeight="semibold">
-                            {planningResult.transfers.length} Transfer
-                            {planningResult.transfers.length !== 1 ? "s" : ""}
-                        </Text>
-                    </Badge>
+                <div className="flex flex-col gap-2">
+                    <Text fontWeight="semibold">Recommended Journey:</Text>
+                    <Text color={"gray.400"}>
+                        Travel Time: {toHoursAndMinutes(travelMins)}
+                    </Text>
+                </div>
+                <div className="flex flex-col gap-2">
+                    <>
+                        <Badge background="green.500" size="md">
+                            <Text fontWeight="semibold">
+                                {planningResult.stop_count} Stop
+                                {planningResult.stop_count !== 1 ? "s" : ""}
+                            </Text>
+                        </Badge>
+                        <Badge background="red.500" size="md">
+                            <Text fontWeight="semibold">
+                                {planningResult.transfers.length} Transfer
+                                {planningResult.transfers.length !== 1
+                                    ? "s"
+                                    : ""}
+                            </Text>
+                        </Badge>
+                    </>
                 </div>
             </div>
             <VStack
@@ -124,4 +134,14 @@ function StopCard({ stop, segmentIndex }: StopCardProps) {
             </Card.Root>
         </Box>
     );
+}
+
+function toHoursAndMinutes(totalMinutes: number) {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `${padToTwoDigits(hours)}:${padToTwoDigits(minutes)}`;
+}
+
+function padToTwoDigits(num: number) {
+    return num.toString().padStart(2, "0");
 }

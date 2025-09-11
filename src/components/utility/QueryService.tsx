@@ -54,6 +54,7 @@ export type PlanningResult = {
     start_time: string;
     stop_count: number;
     transfers: string[];
+    total_travel_minutes: number;
 };
 
 /**
