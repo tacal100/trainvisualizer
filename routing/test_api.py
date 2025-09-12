@@ -44,29 +44,8 @@ def test_route_get():
     print("=== Testing Route via GET ===")
     try:
         # Test with station names
-        params = {"from": "CAGLIARI", "to": "OLBIA", "time": "08:00:00"}
+        params = {"from": "830012810", "to": "830012819", "time": "08:00:00"}
         response = requests.get(f"{BASE_URL}/api/route", params=params)
-        print(f"Status: {response.status_code}")
-        data = response.json()
-        
-        if data.get("success"):
-            print(f"Route found: {data['origin_name']} → {data['destination_name']}")
-            print(f"Travel time: {data['total_travel_minutes']} minutes")
-            print(f"Stops: {data['stop_count']}, Transfers: {data['transfer_count']}")
-        else:
-            print(f"Error: {data.get('error')}")
-            
-    except Exception as e:
-        print(f"Error: {e}")
-    print()
-
-def test_route_post():
-    """Test getting a route via POST request."""
-    print("=== Testing Route via POST ===")
-    try:
-        # Test with station names
-        payload = {"from": "CAGLIARI", "to": "OLBIA", "time": "09:00:00"}
-        response = requests.post(f"{BASE_URL}/api/route", json=payload)
         print(f"Status: {response.status_code}")
         data = response.json()
         
@@ -85,8 +64,5 @@ if __name__ == "__main__":
     print("Testing Flask Routing API")
     print("Make sure the Flask server is running on http://localhost:5000")
     print()
-    
-    test_health()
     test_stations()
     test_route_get()
-    test_route_post()

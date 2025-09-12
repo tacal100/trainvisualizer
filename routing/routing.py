@@ -1,16 +1,3 @@
-"""
-Enhanced routing script: finds the optimal route between two stations with detailed stop information and route transfer detection.
-
-Features:
-- Time-dependent routing respecting train schedules
-- Detailed information for each stop (stop_id, stop_name, arrival, departure)
-- Route transfer detection and notification
-- Complete journey with all intermediate stops
-- Trip information for each segment
-
-Usage: set origin, destination, and start_time variables below, then run the script.
-"""
-
 from __future__ import annotations
 
 import json
@@ -25,7 +12,6 @@ from loading import (Stop, load_routes_info, load_stop_times_by_trip,
 DATA_DIR_DEFAULT = Path("public/data")
 
 def parse_time_to_seconds(t: str) -> Optional[int]:
-    """Parse GTFS HH:MM:SS time to seconds using built-in datetime; return None if invalid."""
     if not t or t.lower() == "nan":
         return None
     try:
@@ -35,7 +21,6 @@ def parse_time_to_seconds(t: str) -> Optional[int]:
         return None
 
 def seconds_to_time(seconds: int) -> str:
-    """Convert seconds to HH:MM:SS format using built-in time formatting."""
     return str(time(seconds // 3600, (seconds % 3600) // 60, seconds % 60))
 
 def earliest_arrival_routing(
@@ -138,7 +123,9 @@ def earliest_arrival_routing(
                             "departure_time": row.get("departure_time"),
                             "is_transfer": True,
                         }
-                        heapq.heappush(pq, (dep_secs, counter, stop_id, t_id, i, path))
+                        # Add transfer stop info to the path for the new trip
+                        new_path = path + [transfer_stop_info]
+                        heapq.heappush(pq, (dep_secs, counter, stop_id, t_id, i, new_path))
                         counter += 1
 
     if best_path is None:
@@ -160,14 +147,51 @@ def earliest_arrival_routing(
         stop_lat = stop_obj.lat if stop_obj else 0.0
         stop_lon = stop_obj.lon if stop_obj else 0.0
         
-        # Detect transfer: when trip_id changes
-        is_transfer = False
+        # Check if this is a transfer (trip_id changes)
+        is_transfer_departure = False
         transfer_note = ""
         
         if i > 0 and last_trip_id is not None and trip_id != last_trip_id:
-            is_transfer = True
+            # This is a transfer point - check if we need to add arrival stop for previous trip
+            # Only add arrival stop if the current stop is different from the previous stop
+            # or if the previous stop wasn't already added to processed_stops
+            prev_stop_info = best_path[i-1]
+            
+            # Check if the last processed stop is the same as the previous stop with the same trip_id
+            need_arrival_stop = True
+            if (processed_stops and 
+                processed_stops[-1]["stop_id"] == prev_stop_info["stop_id"] and 
+                processed_stops[-1]["trip_id"] == last_trip_id):
+                need_arrival_stop = False
+            
+            if need_arrival_stop:
+                prev_route_id = prev_stop_info.get("route_id", "")
+                prev_route_info = routes.get(prev_route_id, {})
+                prev_stop_obj = stops.get(prev_stop_info["stop_id"])
+                prev_stop_lat = prev_stop_obj.lat if prev_stop_obj else 0.0
+                prev_stop_lon = prev_stop_obj.lon if prev_stop_obj else 0.0
+                
+                # Add arrival stop (end of previous trip)
+                arrival_stop = {
+                    "stop_id": prev_stop_info["stop_id"],
+                    "stop_name": prev_stop_info["stop_name"],
+                    "stop_lat": prev_stop_lat,
+                    "stop_lon": prev_stop_lon,
+                    "arrival_time": prev_stop_info["arrival_time"],
+                    "departure_time": prev_stop_info["departure_time"],
+                    "trip_id": last_trip_id,
+                    "route_id": prev_route_id,
+                    "route_name": prev_route_info.get("route_short_name", prev_route_id),
+                    "route_description": prev_route_info.get("route_long_name", ""),
+                    "is_transfer": False,
+                    "transfer_type": "arrival"
+                }
+                processed_stops.append(arrival_stop)
+            
+            # Mark current stop as transfer departure
+            is_transfer_departure = True
             last_route_id = trip_routes.get(last_trip_id, {}).get("route_id", "")
-            current_route_id = trip_routes.get(trip_id, {}).get("route_id", "")
+            current_route_id = route_id
             transfer_note = f"Transfer from trip {last_trip_id} (route {last_route_id}) to trip {trip_id} (route {current_route_id})"
             transfers.append({
                 "at_stop": stop_info["stop_name"],
@@ -181,6 +205,7 @@ def earliest_arrival_routing(
                 "to_route": current_route_id
             })
         
+        # Add current stop (either regular stop or departure after transfer)
         enhanced_stop = {
             "stop_id": stop_info["stop_id"],
             "stop_name": stop_info["stop_name"],
@@ -192,11 +217,12 @@ def earliest_arrival_routing(
             "route_id": route_id,
             "route_name": route_info.get("route_short_name", route_id),
             "route_description": route_info.get("route_long_name", ""),
-            "is_transfer": is_transfer
+            "is_transfer": is_transfer_departure
         }
         
-        if is_transfer:
+        if is_transfer_departure:
             enhanced_stop["transfer_note"] = transfer_note
+            enhanced_stop["transfer_type"] = "departure"
         
         processed_stops.append(enhanced_stop)
         last_trip_id = trip_id
@@ -250,35 +276,14 @@ def compute_route(origin_id: str, dest_id: str, start_time: str, data_dir: Path 
     return earliest_arrival_routing(stops, trips, routes, trip_routes, origin_id, dest_id, start_time)
 
 def getRoute(station1: str, station2: str, start_time: str = "08:00:00", data_dir: Path = DATA_DIR_DEFAULT) -> dict:
-    """
-    API function to get route between two stations.
-    
-    Args:
-        station1: Origin station (stop_id or partial station name)
-        station2: Destination station (stop_id or partial station name) 
-        start_time: Departure time from origin (HH:MM:SS format, default: "08:00:00")
-        data_dir: Directory containing GTFS CSV files (default: "public/data")
-    
-    Returns:
-        dict: Route information including:
-            - origin/destination details
-            - total_travel_minutes
-            - detailed_route: list of all stops with arrival/departure times
-            - transfers: list of route transfers
-            - stop_count, transfer_count
-    
-    Example:
-        route = getRoute("CAGLIARI", "OLBIA")
-        route = getRoute("830012891", "830012855", "09:30:00")
-    """
     try:
         return compute_route(station1, station2, start_time, data_dir)
     except Exception as e:
         return {"error": str(e), "success": False}
 
 # --- Editable variables for quick testing ---
-origin = "CAGLIARI"      # stop id or (partial) name
-destination = "OLBIA"    # stop id or (partial) name
+origin = "830012810"      # stop id or (partial) name
+destination = "830012819"    # stop id or (partial) name
 start_time = "08:00:00"  # departure time from origin (HH:MM:SS)
 data_dir = DATA_DIR_DEFAULT  # Path to GTFS CSVs
 pretty = True  # Pretty-print JSON output
