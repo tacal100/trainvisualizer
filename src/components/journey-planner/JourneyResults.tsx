@@ -91,12 +91,22 @@ function StopCard({ stop, segmentIndex }: StopCardProps) {
                 p={0}
             >
                 <Card.Header>
-                    <Text fontWeight="bold">{stop.stop_name}</Text>
+                    <div className="flex flex-row justify-between w-full items-center">
+                        <Text fontWeight="bold">{stop.stop_name}</Text>
+                        <Text fontSize="sm" color="gray.400">
+                            Trip: {stop.trip_headsign} ( )
+                        </Text>
+                    </div>
                 </Card.Header>
                 <Card.Body pt={0}>
                     <Text fontSize="sm" color="gray.600">
-                        Route: {stop.route_name + " " + stop.trip_short_name} -{" "}
-                        {stop.is_transfer ? "Transfer" : "Direct"}
+                        <Text as="p" fontWeight="bold">
+                            {stop.trip_short_name
+                                ? stop.route_name + "-" + stop.trip_short_name
+                                : "N/A"}
+                        </Text>
+                        {stop.is_transfer ? "Transfer" : "Direct"} - Date:{" "}
+                        {parseDate(stop.date)}
                     </Text>
                     <Text fontSize="sm" color="white.800">
                         Arrival: {stop.arrival_time} | Departure:{" "}
@@ -116,4 +126,8 @@ function toHoursAndMinutes(totalMinutes: number) {
 
 function padToTwoDigits(num: number) {
     return num.toString().padStart(2, "0");
+}
+
+function parseDate(date: string) {
+    return date.replace(/(\d{4})(\d{2})(\d{2})/, "$2/$3/$1");
 }

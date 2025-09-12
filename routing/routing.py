@@ -130,13 +130,13 @@ def build_transit_graph(
             prev_arrival_time = departure_secs
     
     # Add transfer edges between different trips at the same stop (optimized)
-    transfer_penalty = 600  # 5 minutes penalty for each transfer
+    transfer_penalty = 600  # 1 minute penalty for each transfer
     for stop_id, departures in stop_departures.items():
         # Sort departures by time
         departures.sort(key=lambda x: x[1])
         
         # Limit transfers: only connect to the next few departures to avoid exponential edges
-        MAX_TRANSFERS_PER_ARRIVAL = 3
+        MAX_TRANSFERS_PER_ARRIVAL = 2 
         
         for i, (from_node, from_time) in enumerate(departures):
             from_trip = G.nodes[from_node]["trip_id"]

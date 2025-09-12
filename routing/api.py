@@ -37,6 +37,7 @@ def get_route_api():
         origin_id = request.args.get('from')
         destination_id = request.args.get('to')
         start_time = request.args.get('time', '08:00:00')
+        date = request.args.get('date')  # Optional date parameter
         
         # Validate required parameters
         if not origin_id:
@@ -45,7 +46,7 @@ def get_route_api():
             return jsonify({"error": "Missing 'to' parameter (station ID required)", "success": False}), 400
         
         # Get the route
-        result = getRoute(origin_id, destination_id, start_time)
+        result = getRoute(origin_id, destination_id, start_time, date=date)
         
         # Check if there was an error
         if "error" in result:
