@@ -382,7 +382,7 @@ def earliest_arrival_routing(
     path = find_earliest_arrival_path(G, stop_departures, origin_id, dest_id, start_secs)
     
     if path is None:
-        return {"error": f"No route found from {origin_id} to {dest_id} after {start_time} on {date}"}
+        return {"error": f"No route found from {stops[origin_id].name} to {stops[dest_id].name} after {start_time} on {date}"}
     
     # Convert path to detailed route format
     return path_to_detailed_route(G, path, stops, origin_id, dest_id, start_time, date)
@@ -399,9 +399,9 @@ def compute_route(origin_id: str, dest_id: str, start_time: str, date: str, data
     trip_routes = load_trips_info(trips_path)
     
     if origin_id is None:
-        raise ValueError(f"Origin stop not found: {origin_id}")
+        raise ValueError(f"Origin stop not found: {stops[origin_id].name}")
     if dest_id is None:
-        raise ValueError(f"Destination stop not found: {dest_id}")
+        raise ValueError(f"Destination stop not found: {stops[dest_id].name}")
     if origin_id == dest_id:
         return {
             "origin": origin_id,

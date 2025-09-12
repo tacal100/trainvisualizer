@@ -1,6 +1,7 @@
 "use client";
 
 import { JourneyPlanner } from "@/components/journey-planner/JourneyPlanner";
+import { Toaster, toaster } from "@/components/ui/toaster";
 import {
     fetchRouteForStops,
     fetchRoutes,
@@ -87,6 +88,21 @@ export default function Home() {
             );
             route.then((r) => {
                 console.log("Fetched route for journey:", r);
+                if ("error" in r) {
+                    toaster.create({
+                        title: "Error while fetching route",
+                        description: r.error,
+                        type: "error",
+                    });
+                    setIsPlanning(false);
+                    return;
+                }
+                toaster.create({
+                    title: "Route successfully fetched",
+                    description:
+                        "From " + r.origin_name + " to " + r.destination_name,
+                    type: "success",
+                });
                 setPlanningResult(r);
                 setSelectedStops(
                     r.detailed_route.map((stop: RouteStop) => stop.stop_id)
@@ -106,6 +122,7 @@ export default function Home() {
             alignItems="stretch"
             padding={4}
         >
+            <Toaster />
             <Card.Root w={"65%"}>
                 <Card.Header>
                     <Card.Title>Train Journey Planner</Card.Title>

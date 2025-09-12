@@ -12,7 +12,7 @@ export default function JourneyResults({
     const segmentIndices = planningResult.detailed_route.map((_, idx) => {
         let segmentIndex = 0;
         for (let i = 0; i < idx; i++) {
-            if (planningResult.detailed_route[i].is_transfer) {
+            if (planningResult.detailed_route![i].is_transfer) {
                 segmentIndex++;
             }
         }
@@ -94,7 +94,7 @@ function StopCard({ stop, segmentIndex }: StopCardProps) {
                     <div className="flex flex-row justify-between w-full items-center">
                         <Text fontWeight="bold">{stop.stop_name}</Text>
                         <Text fontSize="sm" color="gray.400">
-                            Trip: {stop.trip_headsign} ( )
+                            Trip: {stop.trip_headsign}
                         </Text>
                     </div>
                 </Card.Header>
