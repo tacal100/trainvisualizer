@@ -39,3 +39,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+pddl_output/train-domain.pddl
+pddl_test/test-domain.pddl

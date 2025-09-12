@@ -107,8 +107,32 @@ def load_trips_info(trips_path: Path) -> Dict[str, dict]:
             for row in reader:
                 trip_routes[row.get("trip_id", "")] = {
                     "route_id": row.get("route_id", ""),
-                    "trip_headsign": row.get("trip_headsign", "")
+                    "service_id": row.get("service_id", ""),
+                    "trip_headsign": row.get("trip_headsign", ""),
+                    "trip_short_name": row.get("trip_short_name", "")
                 }
     except FileNotFoundError:
         pass
     return trip_routes
+
+
+def load_calendar_dates(calendar_dates_path: Path) -> Dict[str, List[str]]:
+    """Load service dates from GTFS calendar_dates.csv file.
+    
+    Args:
+        calendar_dates_path: Path to calendar_dates.csv file
+        
+    Returns:
+        Dictionary mapping service_id to list of dates (YYYYMMDD)
+    """
+    service_dates = defaultdict(list)
+    try:
+        with calendar_dates_path.open(encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                # exception_type 1 means service is added for this date
+                if row.get("exception_type") == "1":
+                    service_dates[row["service_id"]].append(row["date"])
+    except FileNotFoundError:
+        pass
+    return service_dates

@@ -78,33 +78,7 @@ type StopCardProps = {
 function StopCard({ stop, segmentIndex }: StopCardProps) {
     return (
         <Box className="flex flex-col items-center w-full gap-3">
-            {stop.is_transfer ? (
-                <>
-                    <Card.Root
-                        style={{
-                            borderColor: `hsl(${
-                                (segmentIndex * 60) % 360
-                            }, 50%, 50%)`,
-                        }}
-                        w="full"
-                        p={0}
-                    >
-                        <Card.Header>
-                            <Text fontWeight="bold">{stop.stop_name}</Text>
-                        </Card.Header>
-                        <Card.Body pt={0}>
-                            <Text fontSize="sm" color="gray.600">
-                                Route: {stop.route_name} -{" "}
-                                {stop.is_transfer ? "Transfer" : "Direct"}
-                            </Text>
-                            <Text fontSize="sm" color="white.800">
-                                Arrival: {stop.arrival_time}
-                            </Text>
-                        </Card.Body>
-                    </Card.Root>
-                    <BsArrowLeftRight />{" "}
-                </>
-            ) : null}
+            {stop.is_transfer ? <BsArrowLeftRight /> : null}
             <Card.Root
                 style={{
                     borderColor: `hsl(${
@@ -125,10 +99,8 @@ function StopCard({ stop, segmentIndex }: StopCardProps) {
                         {stop.is_transfer ? "Transfer" : "Direct"}
                     </Text>
                     <Text fontSize="sm" color="white.800">
-                        {stop.is_transfer
-                            ? null
-                            : `Arrival: ${stop.arrival_time} | `}
-                        Departure: {stop.departure_time}{" "}
+                        Arrival: {stop.arrival_time} | Departure:{" "}
+                        {stop.departure_time}
                     </Text>
                 </Card.Body>
             </Card.Root>
