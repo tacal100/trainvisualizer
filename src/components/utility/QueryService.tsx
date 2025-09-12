@@ -42,6 +42,9 @@ export type RouteStop = {
     stop_lat: string;
     stop_lon: string;
     trip_id: string;
+    trip_short_name: string;
+    trip_headsign: string;
+    date: string;
 };
 
 export type PlanningResult = {
@@ -66,11 +69,14 @@ export type PlanningResult = {
 export function fetchRouteForStops(
     from: string,
     to: string,
-    time: string
+    time: string,
+    date: string
 ): Promise<PlanningResult> {
     const url = `http://localhost:8080/api/route?from=${encodeURIComponent(
         from
-    )}&to=${encodeURIComponent(to)}&time=${encodeURIComponent(time)}`;
+    )}&to=${encodeURIComponent(to)}&time=${encodeURIComponent(
+        time
+    )}&date=${encodeURIComponent(date)}`;
     return fetch(url).then((res) => {
         if (!res.ok) {
             throw new Error("Network response was not ok");

@@ -26,6 +26,7 @@ def get_route_api():
         - from: Origin station ID (e.g., "830012810")
         - to: Destination station ID (e.g., "830012818")
         - time: Optional departure time (HH:MM:SS format, default: "08:00:00")
+        - date: Optional departure date (YYYY-MM-DD format, default: today)
     
     Example:
         GET /api/route?from=830012810&to=830012818

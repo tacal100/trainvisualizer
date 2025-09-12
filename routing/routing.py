@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import networkx as nx
-import pandas as pd
 from loading import (Stop, load_calendar_dates, load_routes_info,
                      load_stop_times_by_trip, load_stops, load_trips_info)
 
@@ -131,7 +130,7 @@ def build_transit_graph(
             prev_arrival_time = departure_secs
     
     # Add transfer edges between different trips at the same stop (optimized)
-    transfer_penalty = 300  # 5 minutes penalty for each transfer
+    transfer_penalty = 600  # 5 minutes penalty for each transfer
     for stop_id, departures in stop_departures.items():
         # Sort departures by time
         departures.sort(key=lambda x: x[1])
@@ -239,6 +238,13 @@ def path_to_detailed_route(
     if not path:
         return {"error": "No path found"}
 
+    # Handle transfer at the origin: if the first action is a transfer, start the route from the second node.
+    if len(path) > 1:
+        first_node = G.nodes[path[0]]
+        second_node = G.nodes[path[1]]
+        if first_node["stop_id"] == second_node["stop_id"] and first_node["trip_id"] != second_node["trip_id"]:
+            path = path[1:]
+
     # Path cleanup to remove redundant transfers
     if len(path) > 1:
         cleaned_path = [path[0]]
@@ -329,7 +335,7 @@ def path_to_detailed_route(
         last_trip_id = trip_id
     
     # Calculate total travel time
-    start_secs = parse_time_to_seconds(start_time)
+    start_secs = G.nodes[path[0]]["departure_time"]
     final_arrival_secs = G.nodes[path[-1]]["arrival_time"]
     
     # The path weight from Dijkstra includes penalties, so we calculate travel time from start/end times
@@ -365,6 +371,7 @@ def earliest_arrival_routing(
     Returns detailed route with all stops and transfer information using NetworkX.
     """
     start_secs = parse_time_to_seconds(start_time)
+    date = date.replace("-", "")
     if start_secs is None:
         return {"error": f"Invalid start_time: {start_time}"}
     
@@ -385,9 +392,6 @@ def compute_route(origin_id: str, dest_id: str, start_time: str, date: str, data
     stop_times_path = data_dir / "stop_times.csv"
     routes_path = data_dir / "routes.csv"
     trips_path = data_dir / "trips.csv"
-    
-    if not stops_path.exists() or not stop_times_path.exists():
-        raise FileNotFoundError(f"Expected GTFS files in {data_dir}")
     
     stops = load_stops(stops_path)
     trips = load_stop_times_by_trip(stop_times_path)
@@ -415,7 +419,7 @@ def compute_route(origin_id: str, dest_id: str, start_time: str, date: str, data
         }
     return earliest_arrival_routing(stops, trips, routes, trip_routes, origin_id, dest_id, start_time, date)
 
-def getRoute(station1: str, station2: str, start_time: str = "08:00:00", date: str = "20230101", data_dir: Path = DATA_DIR_DEFAULT) -> dict:
+def getRoute(station1: str, station2: str, start_time: str = "08:00:00", date: str = "20241215", data_dir: Path = DATA_DIR_DEFAULT) -> dict:
     try:
         return compute_route(station1, station2, start_time, date, data_dir)
     except Exception as e:

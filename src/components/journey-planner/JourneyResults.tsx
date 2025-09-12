@@ -95,7 +95,7 @@ function StopCard({ stop, segmentIndex }: StopCardProps) {
                 </Card.Header>
                 <Card.Body pt={0}>
                     <Text fontSize="sm" color="gray.600">
-                        Route: {stop.route_name} -{" "}
+                        Route: {stop.route_name + " " + stop.trip_short_name} -{" "}
                         {stop.is_transfer ? "Transfer" : "Direct"}
                     </Text>
                     <Text fontSize="sm" color="white.800">

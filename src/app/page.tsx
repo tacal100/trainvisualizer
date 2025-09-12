@@ -82,7 +82,8 @@ export default function Home() {
             const route = fetchRouteForStops(
                 journeySearch.from,
                 journeySearch.to,
-                journeySearch.time
+                journeySearch.time,
+                journeySearch.date
             );
             route.then((r) => {
                 console.log("Fetched route for journey:", r);
