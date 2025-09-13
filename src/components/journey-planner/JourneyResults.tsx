@@ -3,11 +3,19 @@ import { Badge, Box, Card, Text, VStack } from "@chakra-ui/react";
 import { BsArrowLeftRight } from "react-icons/bs";
 import { PlanningResult, RouteStop } from "../utility/QueryService";
 
-export default function JourneyResults({
-    planningResult,
-}: {
+type JourneyResultsProps = {
+    selectedStop?: RouteStop;
+    setSelectedStop: React.Dispatch<
+        React.SetStateAction<RouteStop | undefined>
+    >;
     planningResult: PlanningResult;
-}) {
+};
+
+export default function JourneyResults({
+    selectedStop,
+    setSelectedStop,
+    planningResult,
+}: JourneyResultsProps) {
     // Map each stop to its segment index
     const segmentIndices = planningResult.detailed_route.map((_, idx) => {
         let segmentIndex = 0;
@@ -58,6 +66,8 @@ export default function JourneyResults({
             >
                 {planningResult.detailed_route.map((stop, idx) => (
                     <StopCard
+                        selectedStop={selectedStop}
+                        setSelectedStop={setSelectedStop}
                         stop={stop}
                         idx={idx}
                         segmentIndex={segmentIndices[idx]}
@@ -73,20 +83,37 @@ type StopCardProps = {
     stop: RouteStop;
     idx: number;
     segmentIndex: number;
+    setSelectedStop: React.Dispatch<
+        React.SetStateAction<RouteStop | undefined>
+    >;
+    selectedStop?: RouteStop;
 };
 
-function StopCard({ stop, segmentIndex }: StopCardProps) {
+function StopCard({
+    stop,
+    segmentIndex,
+    setSelectedStop,
+    selectedStop,
+}: StopCardProps) {
     return (
         <Box className="flex flex-col items-center w-full gap-3">
             {stop.is_transfer ? <BsArrowLeftRight /> : null}
             <Card.Root
+                className="transition-transform duration-150 hover:scale-[1.01] transform-gpu will-change-transform"
                 style={{
                     borderColor: `hsl(${
                         (stop.is_transfer
-                            ? (segmentIndex + 1) * 60
-                            : segmentIndex * 60) % 360
+                            ? 100 + (segmentIndex + 1) * 50
+                            : 100 + segmentIndex * 50) % 360
                     }, 50%, 50%)`,
+                    backgroundColor: isSameStop(selectedStop, stop)
+                        ? "#2D3748"
+                        : "#1A202C",
+                    borderWidth: isSameStop(selectedStop, stop) ? 3 : 2,
+                    cursor: "pointer",
+                    transformOrigin: "center",
                 }}
+                onClick={() => setSelectedStop(stop)}
                 w="full"
                 p={0}
             >
@@ -130,4 +157,8 @@ function padToTwoDigits(num: number) {
 
 function parseDate(date: string) {
     return date.replace(/(\d{4})(\d{2})(\d{2})/, "$2/$3/$1");
+}
+
+function isSameStop(stopA: RouteStop | undefined, stopB: RouteStop) {
+    return stopA?.stop_id === stopB.stop_id && stopA?.trip_id === stopB.trip_id;
 }

@@ -77,9 +77,20 @@ export function fetchRouteForStops(
     )}&to=${encodeURIComponent(to)}&time=${encodeURIComponent(
         time
     )}&date=${encodeURIComponent(date)}`;
-    return fetch(url).then((res) => {
-        return res.json();
-    });
+    return fetch(url)
+        .then((res) => {
+            if (!res.ok) {
+                return res.json().then((errorData) => ({
+                    error:
+                        errorData.error ||
+                        `HTTP ${res.status}: ${res.statusText}`,
+                }));
+            }
+            return res.json();
+        })
+        .catch((error) => {
+            return { error: error.message || "Network error occurred" };
+        });
 }
 
 function parseCSV(csvText: string) {

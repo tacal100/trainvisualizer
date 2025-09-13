@@ -4,11 +4,8 @@ import { JourneyPlanner } from "@/components/journey-planner/JourneyPlanner";
 import { Toaster, toaster } from "@/components/ui/toaster";
 import {
     fetchRouteForStops,
-    fetchRoutes,
     fetchStops,
-    fetchStopTimes,
     PlanningResult,
-    Route,
     RouteStop,
 } from "@/components/utility/QueryService";
 import { Box, Card, HStack, Spinner, VStack } from "@chakra-ui/react";
@@ -17,7 +14,9 @@ import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 
 // Dynamically import MapView with SSR disabled
-const MapView = dynamic(() => import("../components/MapView"), { ssr: false });
+const MapView = dynamic(() => import("../components/Map/MapView"), {
+    ssr: false,
+});
 
 export type JourneySearch = {
     from: string;
@@ -36,21 +35,7 @@ export default function Home() {
         staleTime: Infinity,
     });
 
-    const { data: routes = [], isLoading: routesLoading } = useQuery({
-        queryKey: ["routes"],
-        queryFn: fetchRoutes,
-        staleTime: Infinity,
-    });
-
-    const { data: stopTimes = [], isLoading: stopTimesLoading } = useQuery({
-        queryKey: ["stopTimes"],
-        queryFn: fetchStopTimes,
-        staleTime: Infinity,
-    });
-
-    // State
-    const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
-    const [selectedStops, setSelectedStops] = useState<string[]>([]);
+    const [selectedStop, setSelectedStop] = useState<RouteStop | undefined>();
     const [journeySearch, setJourneySearch] = useState<JourneySearch>({
         from: "",
         to: "",
@@ -104,15 +89,12 @@ export default function Home() {
                     type: "success",
                 });
                 setPlanningResult(r);
-                setSelectedStops(
-                    r.detailed_route.map((stop: RouteStop) => stop.stop_id)
-                );
                 setIsPlanning(false);
             });
         }, 1);
     };
 
-    const isLoading = stopsLoading || routesLoading || stopTimesLoading;
+    const isLoading = stopsLoading;
 
     return (
         <HStack
@@ -134,9 +116,10 @@ export default function Home() {
                     {mounted && !isLoading ? (
                         <MapView
                             stops={stops}
-                            selectedRoute={selectedRoute}
                             mapCenter={mapCenter}
                             planningResult={planningResult}
+                            selectedStop={selectedStop}
+                            setSelectedStop={setSelectedStop}
                         />
                     ) : (
                         <Box
@@ -164,6 +147,8 @@ export default function Home() {
                 <JourneyPlanner
                     stops={stops}
                     journeySearch={journeySearch}
+                    selectedStop={selectedStop}
+                    setSelectedStop={setSelectedStop}
                     setJourneySearch={setJourneySearch}
                     handleJourneyPlan={handleJourneyPlan}
                     isPlanning={isPlanning}

@@ -2,13 +2,17 @@ import { JourneySearch } from "@/app/page";
 import { Button, Card, Icon, Separator, VStack } from "@chakra-ui/react";
 import { LuNavigation } from "react-icons/lu";
 import DateTimePicker from "../DateTimePicker";
-import { PlanningResult, Stop } from "../utility/QueryService";
+import { PlanningResult, RouteStop, Stop } from "../utility/QueryService";
 import JourneyResults from "./JourneyResults";
 import StopPicker from "./StopPicker";
 
 type JourneyPlannerProps = {
     stops: Stop[];
     journeySearch: JourneySearch;
+    selectedStop?: RouteStop;
+    setSelectedStop: React.Dispatch<
+        React.SetStateAction<RouteStop | undefined>
+    >;
     setJourneySearch: React.Dispatch<React.SetStateAction<JourneySearch>>;
     handleJourneyPlan: () => void;
     isPlanning: boolean;
@@ -18,6 +22,8 @@ type JourneyPlannerProps = {
 export function JourneyPlanner({
     stops,
     journeySearch,
+    setSelectedStop,
+    selectedStop,
     setJourneySearch,
     handleJourneyPlan,
     isPlanning,
@@ -69,7 +75,11 @@ export function JourneyPlanner({
                 </VStack>
                 <Separator marginBlock={4} />
                 {planningResult && (
-                    <JourneyResults planningResult={planningResult} />
+                    <JourneyResults
+                        selectedStop={selectedStop}
+                        setSelectedStop={setSelectedStop}
+                        planningResult={planningResult}
+                    />
                 )}
             </Card.Body>
         </Card.Root>

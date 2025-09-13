@@ -8,14 +8,18 @@ import {
     TileLayer,
     useMap,
 } from "react-leaflet";
-import { PlanningResult, Route, Stop } from "./utility/QueryService";
+import { PlanningResult, RouteStop, Stop } from "../utility/QueryService";
+import { StopMarker } from "./StopMarker";
 // Import your train icon properly
 
 interface MapViewProps {
     stops: Stop[];
-    selectedRoute: Route | null;
     mapCenter: [number, number];
     planningResult: PlanningResult | null;
+    selectedStop?: RouteStop;
+    setSelectedStop: React.Dispatch<
+        React.SetStateAction<RouteStop | undefined>
+    >;
 }
 
 // Fix Leaflet default icon - remove shadow and use your train icon
@@ -120,9 +124,10 @@ function JourneyAnimatedMarker({
  */
 export default function MapView({
     stops,
-    selectedRoute,
     mapCenter,
     planningResult,
+    selectedStop,
+    setSelectedStop,
 }: MapViewProps) {
     const selectedStops = planningResult?.detailed_route;
 
@@ -159,8 +164,8 @@ export default function MapView({
                     polylines.push({
                         positions,
                         color: `hsl(${
-                            (polylines.length * 60) % 360
-                        }, 50%, 50%)`,
+                            100 + ((polylines.length * 50) % 360)
+                        }, 70%, 50%)`,
                         key: `journey-segment-${polylines.length}`,
                         duration: durationInSeconds,
                     });
@@ -193,7 +198,9 @@ export default function MapView({
 
             polylines.push({
                 positions,
-                color: `hsl(${(polylines.length * 60) % 360}, 70%, 50%)`,
+                color: `hsl(${
+                    100 + ((polylines.length * 50) % 360)
+                }, 70%, 50%)`,
                 key: `journey-segment-${polylines.length}`,
                 duration: durationInSeconds,
             });
@@ -238,60 +245,27 @@ export default function MapView({
 
             {/* All stops */}
             {stops.map((stop) => {
-                const isSelected = planningResult?.detailed_route.some(
-                    (s) => s.stop_id === stop.stop_id
-                );
                 const isInJourney = planningResult?.detailed_route.some(
                     (stopInJourney) =>
                         stop.stop_id === stopInJourney.stop_id ||
                         stop.stop_name === stopInJourney.stop_name
                 );
+                const isHighlighted = selectedStop?.stop_id === stop.stop_id;
+                const routeStop = planningResult?.detailed_route.find(
+                    (rs) => rs.stop_id === stop.stop_id
+                );
 
-                if (isSelected || isInJourney) {
+                if (isInJourney) {
                     return (
-                        <CircleMarker
+                        <StopMarker
                             key={stop.stop_id}
-                            center={[
-                                parseFloat(stop.stop_lat),
-                                parseFloat(stop.stop_lon),
-                            ]}
-                            radius={isInJourney ? 10 : 8}
-                            pathOptions={{
-                                fillColor: isInJourney ? "#FF6B6B" : "#0066CC",
-                                fillOpacity: 0.8,
-                                color: "white",
-                                weight: 3,
-                            }}
-                        >
-                            <Popup>
-                                <div>
-                                    <strong>{stop.stop_name}</strong>
-                                    <br />
-                                    <span
-                                        style={{
-                                            fontSize: "12px",
-                                            color: "#666",
-                                        }}
-                                    >
-                                        ID: {stop.stop_id}
-                                    </span>
-                                    {isSelected && selectedRoute && (
-                                        <>
-                                            <br />
-                                            <span
-                                                style={{
-                                                    fontSize: "12px",
-                                                    color: "#0066CC",
-                                                    fontWeight: "bold",
-                                                }}
-                                            >
-                                                {selectedRoute.route_long_name}
-                                            </span>
-                                        </>
-                                    )}
-                                </div>
-                            </Popup>
-                        </CircleMarker>
+                            stop={stop}
+                            selectedStop={selectedStop}
+                            isHighlighted={isHighlighted}
+                            isInJourney={isInJourney}
+                            routeStop={routeStop}
+                            setSelectedStop={setSelectedStop}
+                        />
                     );
                 } else {
                     return (
@@ -308,6 +282,7 @@ export default function MapView({
                                 color: "white",
                                 weight: 2,
                             }}
+                            pane="markerPane"
                         >
                             <Popup>
                                 <div>
